@@ -1,0 +1,11 @@
+###
+POST http://localhost:3000/register
+Content-Type: application/json
+
+{
+  "username": "padmini",
+  "password": "padmini@123"
+}
+
+###
+GET http://localhost:3000/tasks?creator='sairam'
