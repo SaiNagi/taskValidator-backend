@@ -9,3 +9,32 @@ Content-Type: application/json
 
 ###
 GET http://localhost:3000/tasks?creator='sairam'
+
+
+###
+### Register User
+POST https://taskvalidator-backend-1.onrender.com/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123"
+}
+
+### Login User
+POST https://taskvalidator-backend-1.onrender.com/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123"
+}
+
+### Get Tasks (Authenticated)
+GET https://taskvalidator-backend-1.onrender.com/tasks
+Authorization: Bearer {{"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyIiwiaWF0IjoxNzM0NDk3MDM1LCJleHAiOjE3MzQ1MDA2MzV9.vbHEqbJPO2w-bTNtSeit0PJgBQ29bfQGN3chR_lti8c"}}
+
+
+### Get Tasks (Authenticated)
+GET https://taskvalidator-backend-1.onrender.com/tasks
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyIiwiaWF0IjoxNzM0NDk3MDM1LCJleHAiOjE3MzQ1MDA2MzV9.vbHEqbJPO2w-bTNtSeit0PJgBQ29bfQGN3chR_lti8c

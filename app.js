@@ -16,14 +16,12 @@ require('dotenv').config();
 const SECRET_KEY = "SAIRAM";
 
 // Middleware
-
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-
 // Configure CORS options
 const corsOptions = {
-  origin: 'http://localhost:3001', // The origin of your frontend
+  origin: ['http://localhost:3001', 'https://task-validator-front-end.vercel.app'], // Allow both localhost and Vercel URLs
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'], // Allow the necessary headers
   credentials: true, // Allow cookies and credentials to be sent
@@ -31,11 +29,6 @@ const corsOptions = {
 
 // Use CORS middleware with custom options
 app.use(cors(corsOptions));
-
-// Other middleware and route definitions
-app.use(bodyParser.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 
 // Ensure 'uploads' directory exists, create it if not
 const uploadDir = 'uploads';
@@ -240,7 +233,6 @@ app.post("/logout", (req, res) => {
   // Respond with a success message
   res.status(200).json({ message: "Successfully logged out" });
 });
-
 
 // Start the server
 app.listen(port, () => {
