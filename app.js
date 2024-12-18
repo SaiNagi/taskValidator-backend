@@ -23,7 +23,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Configure CORS options
 const corsOptions = {
-  origin: 'http://localhost:3001', // The origin of your frontend
+  origin: 'https://task-validator-front-en2b3ns3q-sai-ram-s-projects-82f7cf97.vercel.app/', // The origin of your frontend
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'], // Allow the necessary headers
   credentials: true, // Allow cookies and credentials to be sent
