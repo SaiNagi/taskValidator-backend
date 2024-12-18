@@ -21,11 +21,15 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // CORS Configuration
 const corsOptions = {
-  origin: 'https://task-validator-front-en2b3ns3q-sai-ram-s-projects-82f7cf97.vercel.app',
+  origin: [
+    'https://task-validator-front-end.vercel.app',
+    'https://task-validator-front-en2b3ns3q-sai-ram-s-projects-82f7cf97.vercel.app'
+  ],
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 };
+
 app.use(cors(corsOptions));
 
 // Ensure 'uploads' directory exists
