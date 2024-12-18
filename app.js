@@ -147,7 +147,7 @@ app.get("/tasks", authenticate, (req, res) => {
   const username = req.user.username;
 
   db.all(
-    "SELECT * FROM tasks WHERE assignee = ? OR creator = ?",
+    "SELECT * FROM tasks WHERE assignee = ? OR creator = ? AND WHERE status = 'Pending'",
     [username, username],
     (err, rows) => {
       if (err) res.status(500).json({ message: "Failed to fetch tasks." });
