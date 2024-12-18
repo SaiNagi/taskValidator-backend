@@ -242,6 +242,11 @@ app.post("/logout", (req, res) => {
 });
 
 
+app.use('/manifest.json', (req, res) => {
+  res.sendFile(path.join(__dirname, 'path-to-manifest/manifest.json'));
+});
+
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
