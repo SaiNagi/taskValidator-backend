@@ -144,14 +144,23 @@ app.post("/tasks", authenticate, (req, res) => {
 
 // Fetch Tasks
 app.get("/tasks", authenticate, (req, res) => {
-  const username = req.user.username;
+  const username = req.user.username;  // The authenticated user's username
+  const otheruser = req.query.creator; // The query parameter 'creator' (or 'otheruser')
+
+  // If 'otheruser' query parameter exists, fetch tasks for 'otheruser', otherwise for the authenticated user
+  const userToFetch = otheruser || username;
+
+  console.log("Fetching tasks for: ", userToFetch); // Log the user whose tasks are being fetched
 
   db.all(
-    "SELECT * FROM tasks WHERE assignee = ? OR creator = ?",
-    [username, username],
+    "SELECT * FROM tasks WHERE assignee = ? OR creator = ? AND status = 'Pending'",
+    [userToFetch, userToFetch], // Use the username from the query parameter or the authenticated user
     (err, rows) => {
-      if (err) res.status(500).json({ message: "Failed to fetch tasks." });
-      else res.status(200).json(rows);
+      if (err) {
+        res.status(500).json({ message: "Failed to fetch tasks." });
+      } else {
+        res.status(200).json(rows);
+      }
     }
   );
 });
