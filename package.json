@@ -19,7 +19,9 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "sqlite3": "^5.1.7",
-    "pg": "^8.10.0"
+    "pg": "^8.10.0",
+    "nodemailer": "^6.7.2",
+    "dotenv": "^10.0.0"
   },
   "engines": {
     "node": "16.x"
