@@ -2,7 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const multer = require("multer");
 const cors = require("cors");
-const sqlite3 = require("sqlite3").verbose();
+const { Client } = require("pg");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
@@ -49,35 +49,48 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Database Setup
-const db = new sqlite3.Database("tasks.db", (err) => {
-  if (err) console.error(err.message);
-  else console.log("Connected to SQLite database.");
+// PostgreSQL Database Setup
+const client = new Client({
+  connectionString: process.env.DATABASE_URL, // Connection string from Neon or your PostgreSQL service
+  ssl: {
+    rejectUnauthorized: false, // For SSL connections, set this to false if needed
+  }
+});
+
+client.connect((err) => {
+  if (err) console.error('Connection error', err.stack);
+  else console.log('Connected to PostgreSQL database');
 });
 
 // Create Tables
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
-    )
-  `);
+const createTables = async () => {
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+      )
+    `);
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS tasks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      description TEXT NOT NULL,
-      due_date TEXT NOT NULL,
-      creator TEXT NOT NULL,
-      assignee TEXT NOT NULL,
-      status TEXT DEFAULT 'Pending',
-      proof TEXT
-    )
-  `);
-});
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        due_date TEXT NOT NULL,
+        creator TEXT NOT NULL,
+        assignee TEXT NOT NULL,
+        status TEXT DEFAULT 'Pending',
+        proof TEXT
+      )
+    `);
+  } catch (error) {
+    console.error("Error creating tables: ", error);
+  }
+};
+
+createTables();
 
 // Routes
 
@@ -86,29 +99,29 @@ app.post("/register", async (req, res) => {
   const { username, password } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    db.run("INSERT INTO users (username, password) VALUES (?, ?)", [username, hashedPassword], (err) => {
-      if (err) {
-        return res.status(400).json({ message: "User already exists." });
-      }
-      res.status(201).json({ message: "User registered successfully." });
-    });
+    await client.query("INSERT INTO users (username, password) VALUES ($1, $2)", [username, hashedPassword]);
+    res.status(201).json({ message: "User registered successfully." });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error." });
+    res.status(400).json({ message: "User already exists." });
   }
 });
 
 // Login Route
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  db.get("SELECT * FROM users WHERE username = ?", [username], async (err, user) => {
-    if (err || !user) return res.status(400).json({ message: "Invalid credentials." });
+  try {
+    const result = await client.query("SELECT * FROM users WHERE username = $1", [username]);
+    const user = result.rows[0];
+    if (!user) return res.status(400).json({ message: "Invalid credentials." });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
 
     const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: "1h" });
     res.status(200).json({ token });
-  });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error." });
+  }
 });
 
 // Authentication Middleware
@@ -129,59 +142,54 @@ const authenticate = (req, res, next) => {
 };
 
 // Create Task
-app.post("/tasks", authenticate, (req, res) => {
+app.post("/tasks", authenticate, async (req, res) => {
   const { title, description, due_date, assignee } = req.body;
   const creator = req.user.username;
 
-  db.run(
-    "INSERT INTO tasks (title, description, due_date, creator, assignee) VALUES (?, ?, ?, ?, ?)",
-    [title, description, due_date, creator, assignee],
-    (err) => {
-      if (err) {
-        res.status(500).json({ message: "Failed to create task." });
-      } else {
-        res.status(201).json({ message: "Task created successfully." });
-      }
-    }
-  );
+  try {
+    await client.query(
+      "INSERT INTO tasks (title, description, due_date, creator, assignee) VALUES ($1, $2, $3, $4, $5)",
+      [title, description, due_date, creator, assignee]
+    );
+    res.status(201).json({ message: "Task created successfully." });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to create task." });
+  }
 });
 
 // Fetch Tasks
-app.get("/tasks", authenticate, (req, res) => {
+app.get("/tasks", authenticate, async (req, res) => {
   const username = req.user.username;  // The authenticated user's username
   const otheruser = req.query.creator; // The query parameter 'creator' (or 'otheruser')
 
-  // If 'otheruser' query parameter exists, fetch tasks for 'otheruser', otherwise for the authenticated user
   const userToFetch = otheruser || username;
 
-  console.log("Fetching tasks for: ", userToFetch); // Log the user whose tasks are being fetched
-
-  db.all(
-    "SELECT * FROM tasks WHERE assignee = ? OR creator = ? AND status = 'Pending'",
-    [userToFetch, userToFetch], // Use the username from the query parameter or the authenticated user
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ message: "Failed to fetch tasks." });
-      } else {
-        res.status(200).json(rows);
-      }
-    }
-  );
+  try {
+    const result = await client.query(
+      "SELECT * FROM tasks WHERE assignee = $1 OR creator = $1 AND status = 'Pending'",
+      [userToFetch]
+    );
+    res.status(200).json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch tasks." });
+  }
 });
 
 // Submit Proof
-app.post("/tasks/:id/proof", authenticate, upload.single("proof"), (req, res) => {
+app.post("/tasks/:id/proof", authenticate, upload.single("proof"), async (req, res) => {
   const taskId = req.params.id;
   const proof = req.file.path;
 
-  db.run("UPDATE tasks SET proof = ? WHERE id = ?", [proof, taskId], (err) => {
-    if (err) res.status(500).json({ message: "Failed to submit proof." });
-    else res.status(200).json({ message: "Proof submitted successfully." });
-  });
+  try {
+    await client.query("UPDATE tasks SET proof = $1 WHERE id = $2", [proof, taskId]);
+    res.status(200).json({ message: "Proof submitted successfully." });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to submit proof." });
+  }
 });
 
 // Validate Task
-app.post("/tasks/:id/validate", authenticate, (req, res) => {
+app.post("/tasks/:id/validate", authenticate, async (req, res) => {
   const taskId = req.params.id;
   const { status } = req.body;
 
@@ -189,21 +197,27 @@ app.post("/tasks/:id/validate", authenticate, (req, res) => {
     return res.status(400).json({ message: "Invalid status." });
   }
 
-  db.run("UPDATE tasks SET status = ? WHERE id = ?", [status, taskId], (err) => {
-    if (err) res.status(500).json({ message: "Failed to update task status." });
-    else res.status(200).json({ message: "Task status updated successfully." });
-  });
+  try {
+    await client.query("UPDATE tasks SET status = $1 WHERE id = $2", [status, taskId]);
+    res.status(200).json({ message: "Task status updated successfully." });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update task status." });
+  }
 });
 
 // Fetch Proof
-app.get("/tasks/:id/proof", authenticate, (req, res) => {
+app.get("/tasks/:id/proof", authenticate, async (req, res) => {
   const taskId = req.params.id;
 
-  db.get("SELECT proof FROM tasks WHERE id = ?", [taskId], (err, row) => {
-    if (err || !row?.proof) return res.status(404).json({ message: "Proof not found." });
-
-    res.status(200).json({ proof: row.proof });
-  });
+  try {
+    const result = await client.query("SELECT proof FROM tasks WHERE id = $1", [taskId]);
+    if (!result.rows.length || !result.rows[0].proof) {
+      return res.status(404).json({ message: "Proof not found." });
+    }
+    res.status(200).json({ proof: result.rows[0].proof });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch proof." });
+  }
 });
 
 // Logout Route
