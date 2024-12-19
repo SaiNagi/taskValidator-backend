@@ -7,6 +7,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const path = require("path");
+const nodemailer = require("nodemailer");
 require("dotenv").config();
 
 const app = express();
@@ -91,6 +92,15 @@ const createTables = async () => {
 };
 
 createTables();
+
+// Nodemailer Configuration
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 // Routes
 
@@ -189,21 +199,56 @@ app.post("/tasks/:id/proof", authenticate, upload.single("proof"), async (req, r
 });
 
 // Validate Task
+// Validate Task
 app.post("/tasks/:id/validate", authenticate, async (req, res) => {
   const taskId = req.params.id;
   const { status } = req.body;
+  const approver = req.user.username; // Fetch the username of the person approving the task
 
   if (!["Approved", "Rejected"].includes(status)) {
     return res.status(400).json({ message: "Invalid status." });
   }
 
   try {
+    // Update the task status
     await client.query("UPDATE tasks SET status = $1 WHERE id = $2", [status, taskId]);
+
+    if (status === "Approved") {
+      // Fetch creator email and task details
+      const result = await client.query(
+        "SELECT tasks.creator, tasks.title, users.username, users.email FROM tasks JOIN users ON tasks.creator = users.username WHERE tasks.id = $1",
+        [taskId]
+      );
+      const taskDetails = result.rows[0];
+
+      if (taskDetails?.email) {
+        // Send email notification
+        const emailContent = `
+          Hello ${taskDetails.creator},
+          
+          Your task titled "${taskDetails.title}" has been approved by ${approver}.
+          
+          Thanks for using Task Validator! Start validating your tasks and stay on track with Task Validator! Boost your performance with our accurate and efficient task checker.
+
+          Regards,
+          Task Validator Team
+        `;
+
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: taskDetails.email,
+          subject: "Task Approved Notification",
+          text: emailContent,
+        });
+      }
+    }
+
     res.status(200).json({ message: "Task status updated successfully." });
   } catch (err) {
     res.status(500).json({ message: "Failed to update task status." });
   }
 });
+
 
 // Fetch Proof
 app.get("/tasks/:id/proof", authenticate, async (req, res) => {
