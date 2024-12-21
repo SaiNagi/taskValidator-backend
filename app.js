@@ -167,21 +167,52 @@ app.post("/tasks", authenticate, async (req, res) => {
   }
 });
 
-// Fetch Tasks
-app.get("/tasks", authenticate, async (req, res) => {
-  const username = req.user.username;  // The authenticated user's username
-  const otheruser = req.query.creator; // The query parameter 'creator' (or 'otheruser')
 
-  const userToFetch = otheruser || username;
+app.get("/tasks", authenticate, async (req, res) => {
+  const username = req.user.username; // The authenticated user's username
 
   try {
     const result = await client.query(
-      "SELECT * FROM tasks WHERE assignee = $1 OR creator = $1 AND status = 'Pending'",
-      [userToFetch]
+      "SELECT * FROM tasks WHERE creator = $1 AND status = 'Pending'",
+      [username]
     );
     res.status(200).json(result.rows);
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch tasks." });
+    res.status(500).json({ message: "Failed to fetch created tasks." });
+  }
+});
+
+
+// Fetch Tasks
+// app.get("/tasks", authenticate, async (req, res) => {
+//   const username = req.user.username;  // The authenticated user's username
+//   const otheruser = req.query.creator; // The query parameter 'creator' (or 'otheruser')
+
+//   const userToFetch = otheruser || username;
+
+//   try {
+//     const result = await client.query(
+//       "SELECT * FROM tasks WHERE assignee = $1 OR creator = $1 AND status = 'Pending'",
+//       [userToFetch]
+//     );
+//     res.status(200).json(result.rows);
+//   } catch (err) {
+//     res.status(500).json({ message: "Failed to fetch tasks." });
+//   }
+// });
+
+
+app.get("/tasks/assigned", authenticate, async (req, res) => {
+  const username = req.user.username; // The authenticated user's username
+
+  try {
+    const result = await client.query(
+      "SELECT * FROM tasks WHERE assignee = $1 AND status = 'Pending'",
+      [username]
+    );
+    res.status(200).json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch assigned tasks." });
   }
 });
 
