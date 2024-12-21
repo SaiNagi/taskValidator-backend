@@ -202,8 +202,8 @@ app.get("/tasks", authenticate, async (req, res) => {
 // });
 
 
-app.get("/tasks/assigned", authenticate, async (req, res) => {
-  const username = req.user.username; // The authenticated user's username
+app.get("/tasks/validate", authenticate, async (req, res) => {
+  const username = req.user.username; // The authenticated user's username from the token
 
   try {
     const result = await client.query(
@@ -212,9 +212,10 @@ app.get("/tasks/assigned", authenticate, async (req, res) => {
     );
     res.status(200).json(result.rows);
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch assigned tasks." });
+    res.status(500).json({ message: "Failed to fetch tasks.", error: err.message });
   }
 });
+
 
 // Submit Proof
 app.post("/tasks/:id/proof", authenticate, upload.single("proof"), async (req, res) => {
