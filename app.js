@@ -26,7 +26,7 @@ const corsOptions = {
     'https://task-validator-front-end.vercel.app',
     'https://task-validator-front-en2b3ns3q-sai-ram-s-projects-82f7cf97.vercel.app'
   ],
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST','PUT'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 };
