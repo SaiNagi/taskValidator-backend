@@ -323,6 +323,27 @@ app.put("/tasks/:id", authenticate, async (req, res) => {
   }
 });
 
+app.delete("/tasks/:id", authenticate, async (req, res) => {
+  const taskId = req.params.id;
+
+  try {
+    // Query to delete the task from the tasks table by ID
+    const result = await client.query("DELETE FROM tasks WHERE id = $1 RETURNING *", [taskId]);
+
+    // If no task is found with the given ID
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "Task not found." });
+    }
+
+    // Successfully deleted the task
+    res.status(200).json({ message: "Task deleted successfully." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete task." });
+  }
+});
+
+
 
 // Logout Route
 app.post("/logout", (req, res) => {
