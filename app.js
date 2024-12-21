@@ -297,6 +297,33 @@ app.get("/tasks/:id/proof", authenticate, async (req, res) => {
   }
 });
 
+
+// Import necessary modules
+app.put("/tasks/:id", authenticate, async (req, res) => {
+  const { title, description, due_date, assignee } = req.body;
+  const { id } = req.params; // Get the task ID from the URL parameters
+
+  try {
+    // Query to update the task details in the database
+    const result = await client.query(
+      "UPDATE tasks SET title = $1, description = $2, due_date = $3, assignee = $4 WHERE id = $5 RETURNING *",
+      [title, description, due_date, assignee, id]
+    );
+
+    // Check if a task was updated
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Task not found." });
+    }
+
+    // Send the updated task as a response
+    res.status(200).json({ message: "Task updated successfully.", task: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update task." });
+  }
+});
+
+
 // Logout Route
 app.post("/logout", (req, res) => {
   res.status(200).json({ message: "Successfully logged out." });
