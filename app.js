@@ -182,16 +182,20 @@ app.post("/tasks/:id/proof", authenticate, upload.single("proof"), async (req, r
   }
 
   try {
-    const result = await cloudinary.uploader.upload_stream(
-      { folder: "task_validator_proofs" },
-      (error, result) => {
-        if (error) {
-          throw new Error("Cloudinary upload failed.");
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: "task_validator_proofs" },
+        (error, result) => {
+          if (error) {
+            return reject(new Error("Cloudinary upload failed."));
+          }
+          resolve(result);
         }
-        return result;
-      }
-    ).end(file.buffer);
+      );
+      uploadStream.end(file.buffer);
+    });
 
+    // Update the database with the secure URL of the uploaded image
     await client.query("UPDATE tasks SET proof = $1 WHERE id = $2", [result.secure_url, taskId]);
 
     res.status(200).json({ message: "Proof submitted successfully.", proofUrl: result.secure_url });
@@ -199,6 +203,7 @@ app.post("/tasks/:id/proof", authenticate, upload.single("proof"), async (req, r
     res.status(500).json({ message: "Failed to submit proof.", error: err.message });
   }
 });
+
 
 // Fetch Proof
 app.get("/tasks/:id/proof", authenticate, async (req, res) => {
