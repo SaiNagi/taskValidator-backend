@@ -326,12 +326,12 @@ app.post("/tasks/:id/validate", authenticate, async (req, res) => {
 });
 
 app.get("/user", authenticate, async (req, res) => {
-  const userId = req.user.id; // Assume `authenticate` middleware sets `req.user`.
+  const userName = req.user.username; // Assume `authenticate` middleware sets `req.user`.
 
   try {
     const result = await client.query(
       "SELECT username, email, image, score FROM users WHERE id = $1",
-      [userId]
+      [userName]
     );
 
     if (!result.rows.length) {
