@@ -270,14 +270,18 @@ app.post("/tasks/:id/validate", authenticate, async (req, res) => {
   }
 
   try {
+    console.log(`Updating task status for task ID: ${taskId}`);
     await client.query("UPDATE tasks SET status = $1 WHERE id = $2", [status, taskId]);
 
     if (status === "Approved") {
+      console.log(`Fetching task details for task ID: ${taskId}`);
       const result = await client.query(
         "SELECT tasks.creator, tasks.title, users.username, users.email FROM tasks JOIN users ON tasks.creator = users.username WHERE tasks.id = $1",
         [taskId]
       );
       const taskDetails = result.rows[0];
+      
+      console.log('Task details:', taskDetails);
 
       if (taskDetails?.email) {
         const emailContent = `
@@ -289,20 +293,27 @@ app.post("/tasks/:id/validate", authenticate, async (req, res) => {
           Task Validator Team
         `;
 
+        console.log('Sending email to:', taskDetails.email);
         await transporter.sendMail({
           from: process.env.EMAIL_USER,
           to: taskDetails.email,
           subject: "Task Approved Notification",
           text: emailContent,
         });
+
+        console.log('Email sent successfully');
+      } else {
+        console.log('No email found for task creator');
       }
     }
 
     res.status(200).json({ message: "Task status updated successfully." });
   } catch (err) {
+    console.error('Error occurred:', err);  // Log the error for debugging
     res.status(500).json({ message: "Failed to update task status." });
   }
 });
+
 
 // Logout
 app.post("/logout", (req, res) => {
