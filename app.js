@@ -330,7 +330,7 @@ app.get("/user", authenticate, async (req, res) => {
 
   try {
     const result = await client.query(
-      "SELECT name, email, image, score FROM users WHERE id = $1",
+      "SELECT username, email, image, score FROM users WHERE id = $1",
       [userId]
     );
 
