@@ -325,6 +325,26 @@ app.post("/tasks/:id/validate", authenticate, async (req, res) => {
   }
 });
 
+app.get("/user", authenticate, async (req, res) => {
+  const userId = req.user.id; // Assume `authenticate` middleware sets `req.user`.
+
+  try {
+    const result = await client.query(
+      "SELECT name, email, image, score FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch user details.", error: err.message });
+  }
+});
+
+
 
 // Logout
 app.post("/logout", (req, res) => {
