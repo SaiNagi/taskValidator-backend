@@ -12,6 +12,17 @@ require("dotenv").config();
 const app = express();
 const port = 3000;
 
+
+
+// Define the transporter
+const transporter = nodemailer.createTransport({
+  service: 'Gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
+
 // Environment Variables
 const SECRET_KEY = process.env.SECRET_KEY || "SAIRAM";
 
