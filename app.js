@@ -109,22 +109,26 @@ const authenticate = (req, res, next) => {
 };
 
 // User Registration
-app.post("/register", async (req, res) => {
-  const { username, password, email, image } = req.body; // Destructure additional fields
+app.post("/register", upload.single("image"), async (req, res) => {
+  const { username, password, email } = req.body;
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10); // Hash the password
-    // Insert all fields into the database
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const imageUrl = req.file.path; // Cloudinary URL
+
+    // Save user to the database
     await client.query(
-      "INSERT INTO users (username, password, email, image) VALUES ($1, $2, $3, $4)", 
-      [username, hashedPassword, email, image]
+      "INSERT INTO users (username, password, email, image) VALUES ($1, $2, $3, $4)",
+      [username, hashedPassword, email, imageUrl]
     );
+
     res.status(201).json({ message: "User registered successfully." });
   } catch (error) {
-    console.error(error); // Log the error for debugging
+    console.error(error);
     res.status(400).json({ message: "User already exists or an error occurred." });
   }
 });
+
 
 
 // User Login
