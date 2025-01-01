@@ -111,23 +111,43 @@ const authenticate = (req, res, next) => {
 // User Registration
 app.post("/register", upload.single("image"), async (req, res) => {
   const { username, password, email } = req.body;
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ message: "No image uploaded." });
+  }
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const imageUrl = req.file.path; // Cloudinary URL
+    // Upload the image to Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: "task_validator_users" }, // Cloudinary folder name
+        (error, result) => {
+          if (error) {
+            return reject(new Error("Cloudinary upload failed."));
+          }
+          resolve(result);
+        }
+      );
+      uploadStream.end(file.buffer);
+    });
 
-    // Save user to the database
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const imageUrl = result.secure_url; // Get the uploaded image URL
+
+    // Insert the user data into the database
     await client.query(
       "INSERT INTO users (username, password, email, image) VALUES ($1, $2, $3, $4)",
       [username, hashedPassword, email, imageUrl]
     );
 
-    res.status(201).json({ message: "User registered successfully." });
+    res.status(201).json({ message: "User registered successfully.", imageUrl });
   } catch (error) {
     console.error(error);
-    res.status(400).json({ message: "User already exists or an error occurred." });
+    res.status(500).json({ message: "Registration failed.", error: error.message });
   }
 });
+
 
 
 
