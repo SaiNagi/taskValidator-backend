@@ -348,7 +348,7 @@ app.get("/leaderboard", authenticate, async (req, res) => {
   try {
     // Query to fetch leaderboard data
     const result = await client.query(
-      `SELECT name, email, score, image 
+      `SELECT username, email, score, image 
        FROM users 
        ORDER BY score DESC`
     );
