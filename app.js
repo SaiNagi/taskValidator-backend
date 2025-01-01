@@ -344,6 +344,27 @@ app.get("/user", authenticate, async (req, res) => {
   }
 });
 
+app.get("/leaderboard", authenticate, async (req, res) => {
+  try {
+    // Query to fetch leaderboard data
+    const result = await client.query(
+      `SELECT name, email, score, image 
+       FROM users 
+       ORDER BY score DESC`
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "Leaderboard is empty." });
+    }
+
+    // Return leaderboard data
+    res.status(200).json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch leaderboard data.", error: err.message });
+  }
+});
+
+
 
 
 // Logout
