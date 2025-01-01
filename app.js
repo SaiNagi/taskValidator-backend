@@ -110,15 +110,22 @@ const authenticate = (req, res, next) => {
 
 // User Registration
 app.post("/register", async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, email, image } = req.body; // Destructure additional fields
+
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await client.query("INSERT INTO users (username, password) VALUES ($1, $2)", [username, hashedPassword]);
+    const hashedPassword = await bcrypt.hash(password, 10); // Hash the password
+    // Insert all fields into the database
+    await client.query(
+      "INSERT INTO users (username, password, email, image) VALUES ($1, $2, $3, $4)", 
+      [username, hashedPassword, email, image]
+    );
     res.status(201).json({ message: "User registered successfully." });
   } catch (error) {
-    res.status(400).json({ message: "User already exists." });
+    console.error(error); // Log the error for debugging
+    res.status(400).json({ message: "User already exists or an error occurred." });
   }
 });
+
 
 // User Login
 app.post("/login", async (req, res) => {
