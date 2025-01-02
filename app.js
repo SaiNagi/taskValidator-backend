@@ -243,9 +243,9 @@ app.post("/tasks/:id/proof", authenticate, upload.single("proof"), async (req, r
 
     // Fetch task details to notify the creator
     const taskDetailsQuery = `
-      SELECT tasks.creator, tasks.title, users.email 
+      SELECT tasks.assignee, tasks.title, users.email 
       FROM tasks 
-      JOIN users ON tasks.creator = users.username 
+      JOIN users ON tasks.assignee = users.username 
       WHERE tasks.id = $1
     `;
     const taskResult = await client.query(taskDetailsQuery, [taskId]);
