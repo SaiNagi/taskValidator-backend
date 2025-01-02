@@ -312,49 +312,95 @@ app.post("/tasks/:id/validate", authenticate, async (req, res) => {
   }
 
   try {
-    console.log(`Updating task status for task ID: ${taskId}`);
-    await client.query("UPDATE tasks SET status = $1 WHERE id = $2", [status, taskId]);
+    console.log(`Validating task ID: ${taskId}`);
+    
+    // Fetch task details
+    const taskResult = await client.query(
+      "SELECT tasks.creator, tasks.title, tasks.due_date, tasks.status, users.username, users.email, users.score FROM tasks JOIN users ON tasks.creator = users.username WHERE tasks.id = $1",
+      [taskId]
+    );
+    const taskDetails = taskResult.rows[0];
+
+    if (!taskDetails) {
+      return res.status(404).json({ message: "Task not found." });
+    }
+
+    console.log("Task details:", taskDetails);
+
+    let newScore = taskDetails.score; // Initialize with current score
 
     if (status === "Approved") {
-      console.log(`Fetching task details for task ID: ${taskId}`);
-      const result = await client.query(
-        "SELECT tasks.creator, tasks.title, users.username, users.email FROM tasks JOIN users ON tasks.creator = users.username WHERE tasks.id = $1",
-        [taskId]
-      );
-      const taskDetails = result.rows[0];
-      
-      console.log('Task details:', taskDetails);
+      const currentDate = new Date();
+      const dueDate = new Date(taskDetails.due_date);
 
-      if (taskDetails?.email) {
+      // Determine score to add based on due date
+      const scoreToAdd = currentDate <= dueDate ? 10 : 5;
+      newScore += scoreToAdd;
+
+      // Update task status and user score
+      await client.query("UPDATE tasks SET status = $1 WHERE id = $2", ["Approved", taskId]);
+      await client.query("UPDATE users SET score = $1 WHERE username = $2", [newScore, taskDetails.creator]);
+
+      // Send approval email
+      if (taskDetails.email) {
         const emailContent = `
           Hello ${taskDetails.creator},
           
           Your task titled "${taskDetails.title}" has been approved by ${approver}.
+          You have earned ${scoreToAdd} points. Your updated score is now ${newScore}.
           
           Regards,
           Task Validator Team
         `;
 
-        console.log('Sending email to:', taskDetails.email);
+        console.log("Sending approval email to:", taskDetails.email);
         await transporter.sendMail({
           from: process.env.EMAIL_USER,
           to: taskDetails.email,
           subject: "Task Approved Notification",
           text: emailContent,
         });
+        console.log("Approval email sent successfully.");
+      }
+    } else if (status === "Rejected") {
+      const scoreToDeduct = 3;
+      newScore -= scoreToDeduct;
 
-        console.log('Email sent successfully');
-      } else {
-        console.log('No email found for task creator');
+      // Update user score and keep the task status as "Pending"
+      await client.query("UPDATE users SET score = $1 WHERE username = $2", [newScore, taskDetails.creator]);
+      await client.query("UPDATE tasks SET status = $1 WHERE id = $2", ["Pending", taskId]);
+
+      // Send rejection email
+      if (taskDetails.email) {
+        const emailContent = `
+          Hello ${taskDetails.creator},
+          
+          Your task titled "${taskDetails.title}" has been rejected by ${approver}.
+          Please resubmit the proof for this task. Your score has been reduced by ${scoreToDeduct} points.
+          Your updated score is now ${newScore}.
+          
+          Regards,
+          Task Validator Team
+        `;
+
+        console.log("Sending rejection email to:", taskDetails.email);
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: taskDetails.email,
+          subject: "Task Rejected Notification",
+          text: emailContent,
+        });
+        console.log("Rejection email sent successfully.");
       }
     }
 
-    res.status(200).json({ message: "Task status updated successfully." });
+    res.status(200).json({ message: "Task validation processed successfully." });
   } catch (err) {
-    console.error('Error occurred:', err);  // Log the error for debugging
-    res.status(500).json({ message: "Failed to update task status." });
+    console.error("Error occurred:", err); // Log the error for debugging
+    res.status(500).json({ message: "Failed to process task validation." });
   }
 });
+
 
 app.get("/user", authenticate, async (req, res) => {
   const userName = req.user.username; // Assume `authenticate` middleware sets `req.user`.
