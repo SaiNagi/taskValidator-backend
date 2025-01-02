@@ -255,7 +255,7 @@ app.post("/tasks/:id/proof", authenticate, upload.single("proof"), async (req, r
       const emailHtmlContent = `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px;">
           <h2 style="color: #4CAF50;">Task Proof Submitted - Action Required</h2>
-          <p>Hello <strong>${taskDetails.creator}</strong>,</p>
+          <p>Hello <strong>${taskDetails.assignee}</strong>,</p>
           <p>A proof has been submitted for the task titled 
             <strong style="color: #4CAF50;">"${taskDetails.title}"</strong>.
             Your immediate attention is needed to validate this task.
