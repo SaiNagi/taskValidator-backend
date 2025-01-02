@@ -241,11 +241,56 @@ app.post("/tasks/:id/proof", authenticate, upload.single("proof"), async (req, r
     // Update the database with the secure URL of the uploaded image
     await client.query("UPDATE tasks SET proof = $1 WHERE id = $2", [result.secure_url, taskId]);
 
+    // Fetch task details to notify the creator
+    const taskDetailsQuery = `
+      SELECT tasks.creator, tasks.title, users.email 
+      FROM tasks 
+      JOIN users ON tasks.creator = users.username 
+      WHERE tasks.id = $1
+    `;
+    const taskResult = await client.query(taskDetailsQuery, [taskId]);
+    const taskDetails = taskResult.rows[0];
+
+    if (taskDetails?.email) {
+      const emailHtmlContent = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px;">
+          <h2 style="color: #4CAF50;">Task Proof Submitted - Action Required</h2>
+          <p>Hello <strong>${taskDetails.creator}</strong>,</p>
+          <p>A proof has been submitted for the task titled 
+            <strong style="color: #4CAF50;">"${taskDetails.title}"</strong>.
+            Your immediate attention is needed to validate this task.
+          </p>
+          <p style="margin-top: 10px;">
+            Please log in and validate the task carefully, as your decision will help maintain consistency.
+          </p>
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="https://task-validator-front-end.vercel.app/login" 
+               style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 16px;">
+              Login to Validate Task
+            </a>
+          </div>
+          <p>If the above button doesn't work, you can copy and paste this link into your browser:</p>
+          <p style="color: #007BFF;">https://task-validator-front-end.vercel.app/login</p>
+          <p style="margin-top: 20px; color: #777;">Thank you for helping us maintain task validation standards!</p>
+          <p style="font-size: 14px; color: #999;">Regards, <br>Task Validator Team</p>
+        </div>
+      `;
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: taskDetails.email,
+        subject: "Task Proof Submitted - Action Required",
+        html: emailHtmlContent,
+      });
+    }
+
     res.status(200).json({ message: "Proof submitted successfully.", proofUrl: result.secure_url });
   } catch (err) {
+    console.error("Error occurred:", err);
     res.status(500).json({ message: "Failed to submit proof.", error: err.message });
   }
 });
+
 
 
 // Fetch Proof
