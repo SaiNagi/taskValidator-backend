@@ -36,11 +36,7 @@ cloudinary.config({
 // Middleware
 app.use(bodyParser.json());
 app.use(cors({
-  origin: [
-    'https://task-validator-front-end.vercel.app',
-    'https://task-validator-front-en2b3ns3q-sai-ram-s-projects-82f7cf97.vercel.app',
-    'http://localhost:3000'
-  ],
+  origin:true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
